@@ -1,7 +1,8 @@
 #!/usr/bin/python3
-'''
-fcreates and distributes an archive to your web servers, using deploy():
-'''
+"""Create and distribute an archive to your web servers.
+
+using deploy():
+"""
 
 import os
 from datetime import datetime
@@ -13,7 +14,7 @@ env.hosts = ['54.160.86.108', '34.239.250.31']
 
 @runs_once
 def do_pack():
-    """Archives the static files."""
+    """Archive the static files."""
     if not os.path.isdir("versions"):
         os.mkdir("versions")
     cur_time = datetime.now()
@@ -36,7 +37,8 @@ def do_pack():
 
 
 def do_deploy(archive_path):
-    """Deploys the static files to the host servers.
+    """Deploy the static files to the host servers.
+
     Args:
         archive_path (str): The path to the archived static files.
     """
@@ -63,7 +65,6 @@ def do_deploy(archive_path):
 
 
 def deploy():
-    """Archives and deploys the static files to the host servers.
-    """
+    """Archive and deploy the static files to the host servers."""
     archive_path = do_pack()
     return do_deploy(archive_path) if archive_path else False
