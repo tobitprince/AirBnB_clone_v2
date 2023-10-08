@@ -1,54 +1,63 @@
-class webserver {
-  package { 'nginx':
-    ensure => 'installed',
-  }
+# Install Nginx package
+package { 'nginx':
+  ensure => 'installed',
+}
 
-  file { '/data/web_static/releases/test':
-    ensure => 'directory',
-    owner  => 'ubuntu',
-    group  => 'ubuntu',
-    mode   => '0755',
-  }
+# Allow incoming HTTP connections
+firewall { '100 allow http':
+  action => 'accept',
+  dport  => '80',
+  proto  => 'tcp',
+}
 
-  file { '/data/web_static/shared':
-    ensure => 'directory',
-    owner  => 'ubuntu',
-    group  => 'ubuntu',
-    mode   => '0755',
-  }
+# Create directories
+file { '/data/web_static/releases/test':
+  ensure => 'directory',
+  owner  => 'ubuntu',
+  group  => 'ubuntu',
+}
 
-  file { '/data/web_static/releases/test/index.html':
-    ensure  => 'file',
-    content => '<h1>Welcome to www.to-bit.tech</h1>',
-    owner   => 'ubuntu',
-    group   => 'ubuntu',
-    mode    => '0644',
-  }
+file { '/data/web_static/shared':
+  ensure => 'directory',
+  owner  => 'ubuntu',
+  group  => 'ubuntu',
+}
 
-  file { '/etc/nginx/sites-available/default':
-    ensure  => 'file',
-    content => template('webserver/default.erb'),
-    owner   => 'root',
-    group   => 'root',
-    mode    => '0644',
-  }
+# Add test string
+file { '/data/web_static/releases/test/index.html':
+  content => '<h1>Welcome to www.to-bit.tech</h1>',
+  owner   => 'ubuntu',
+  group   => 'ubuntu',
+}
 
-  file { '/etc/nginx/sites-enabled/default':
-    ensure => 'link',
-    target => '/etc/nginx/sites-available/default',
-  }
-
-  service { 'nginx':
-    ensure     => 'running',
-    enable     => true,
-    subscribe  => [File['/etc/nginx/sites-available/default'], File['/data/web_static/current']],
-  }
-
-  firewall { '100 allow nginx http':
-    proto   => 'tcp',
-    port    => '80',
-    action  => 'accept',
+# Prevent overwrite
+if File['/data/web_static/current'] {
+  file { '/data/web_static/current':
+    ensure => 'absent',
+    force  => true,
   }
 }
 
-include webserver
+# Create symbolic link
+file { '/data/web_static/current':
+  ensure => 'link',
+  target => '/data/web_static/releases/test/',
+  owner  => 'ubuntu',
+  group  => 'ubuntu',
+}
+
+# Configure Nginx
+file { '/etc/nginx/sites-available/default':
+  content => template('nginx/default.erb'),
+}
+
+file { '/etc/nginx/sites-enabled/default':
+  ensure => 'link',
+  target => '/etc/nginx/sites-available/default',
+}
+
+service { 'nginx':
+  ensure     => 'running',
+  enable     => true,
+  subscribe  => File['/etc/nginx/sites-available/default'],
+}
