@@ -2,6 +2,7 @@
 """ Console Module """
 import cmd
 import sys
+import re
 from models.base_model import BaseModel
 from models.__init__ import storage
 from models.user import User
@@ -19,16 +20,16 @@ class HBNBCommand(cmd.Cmd):
     prompt = '(hbnb) ' if sys.__stdin__.isatty() else ''
 
     classes = {
-               'BaseModel': BaseModel, 'User': User, 'Place': Place,
-               'State': State, 'City': City, 'Amenity': Amenity,
-               'Review': Review
-              }
+        'BaseModel': BaseModel, 'User': User, 'Place': Place,
+        'State': State, 'City': City, 'Amenity': Amenity,
+        'Review': Review
+    }
     dot_cmds = ['all', 'count', 'show', 'destroy', 'update']
     types = {
-             'number_rooms': int, 'number_bathrooms': int,
-             'max_guest': int, 'price_by_night': int,
-             'latitude': float, 'longitude': float
-            }
+        'number_rooms': int, 'number_bathrooms': int,
+        'max_guest': int, 'price_by_night': int,
+        'latitude': float, 'longitude': float
+    }
 
     def preloop(self):
         """Prints if isatty is false"""
@@ -37,6 +38,7 @@ class HBNBCommand(cmd.Cmd):
 
     def precmd(self, line):
         """Reformat command line for advanced command syntax.
+
         Usage: <class name>.<command>([<id> [<*args> or <**kwargs>]])
         (Brackets denote optional fields in usage example.)
         """
@@ -72,7 +74,7 @@ class HBNBCommand(cmd.Cmd):
                 pline = pline[2].strip()  # pline is now str
                 if pline:
                     # check for *args or **kwargs
-                    if pline[0] == '{' and pline[-1] == '}'\
+                    if pline[0] == '{' and pline[-1] == '}' \
                             and type(eval(pline)) is dict:
                         _args = pline
                     else:
@@ -113,49 +115,50 @@ class HBNBCommand(cmd.Cmd):
         pass
 
     def do_create(self, args):
-        """ Create an object of any class"""
+        """ Create an object with given parameters """
+
         if not args:
             print("** class name missing **")
             return
+
+        # Split the argument into class name and parameters
         args = args.split()
-        cls = args.pop(0)
-        if cls not in HBNBCommand.classes:
+        class_name = args[0]
+        params = args[1:]
+
+        # Check if the class exists
+        if class_name not in HBNBCommand.classes:
             print("** class doesn't exist **")
             return
-        instance = HBNBCommand.classes[cls]()
-
-        param = {}
-        for i in args:
-            pair = i.split("=")
-            param[pair[0]] = pair[1]
-
-        for key, val in param.items():
-            try:
-                if key in HBNBCommand.types.keys():
-                    if key in ['latitude', 'longitude']:
-                        if type(eval(val)) is not float:
-                            continue
-                    else:
-                        if type(eval(val)) is not int:
-                            continue
-                if type(eval(val)) is str:
-                    val = val.replace("_", " ")
-                elif type(eval(val)) not in [int, float]:
-                    continue
-                exec(f'instance.{key} = {val}')
-            except Exception:
-                continue
-
-        storage.save()
-        print(instance.id)
-        storage.save()
+        attributes = {}
+        for param in params:
+            # match key=value pairs
+            match = re.match(r'^([^=]+)=(.+)$', param)
+            if match:
+                key, value = match.groups()
+                # Replace underscores with spaces in the key
+                value = value.replace('_', ' ')
+                if value.startswith('"') and value.endswith('"'):
+                    # Remove double quotes and unescape escaped double quotes
+                    value = value[1:-1].replace('"', '\"')
+                    # Check if the value is a float
+                elif re.match(r'^\d+\.\d+$', value):
+                    value = float(value)
+                    # Check if the value is an integer
+                elif re.match(r'^\d+$', value):
+                    value = int(value)
+                else:
+                    pass
+                # attributes.append(value)
+                attributes[key] = value
+        new_instance = HBNBCommand.classes[class_name](**attributes)
+        new_instance.save()
+        print(new_instance.id)
 
     def help_create(self):
         """ Help information for the create method """
         print("Creates a class of any type")
-        print("[Usage]: create <className> <param 1> <param 2> <param 3>...\n")
-        print("the <param> syntax is <key name>=<value>")
-        print("String <value> should start with a double quote")
+        print("[Usage]: create <className>\n")
 
     def do_show(self, args):
         """ Method to show an individual object """
@@ -213,7 +216,7 @@ class HBNBCommand(cmd.Cmd):
         key = c_name + "." + c_id
 
         try:
-            del(storage.all()[key])
+            del (storage.all()[key])
             storage.save()
         except KeyError:
             print("** no instance found **")
@@ -224,22 +227,20 @@ class HBNBCommand(cmd.Cmd):
         print("[Usage]: destroy <className> <objectId>\n")
 
     def do_all(self, args):
-        """ Shows all objects, or all objects of a class"""
-        print_list = []
+        """Shows all objects, or all objects of a class"""
 
         if args:
-            args = args.split(' ')[0]  # remove possible trailing args
-            if args not in HBNBCommand.classes:
-                print("** class doesn't exist **")
+            class_name = args.split(' ')[0]  # Extract the class name
+            if class_name not in HBNBCommand.classes:
+                print("** Class doesn't exist **")
                 return
-            for k, v in storage._FileStorage__objects.items():
-                if k.split('.')[0] == args:
-                    print_list.append(str(v))
-        else:
-            for k, v in storage._FileStorage__objects.items():
-                print_list.append(str(v))
 
-        print(print_list)
+            objects = storage.all(HBNBCommand.classes[class_name])
+        else:
+            # If no class name specified, get all objects
+            objects = storage.all()
+        for obj in objects.values():
+            print(obj)
 
     def help_all(self):
         """ Help information for the all command """
@@ -255,7 +256,7 @@ class HBNBCommand(cmd.Cmd):
         print(count)
 
     def help_count(self):
-        """  """
+        """ """
         print("Usage: count <class_name>")
 
     def do_update(self, args):
