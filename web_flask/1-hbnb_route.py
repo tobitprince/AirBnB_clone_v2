@@ -1,25 +1,21 @@
 #!/usr/bin/python3
-"""Starts Flask web app
-Routes:
-    / - display "Hello HBNB!"
-    /hbnb - display "HBNB"
-"""
+"""Importing lightweight WSGI web application framework"""
 from flask import Flask
+
 
 app = Flask(__name__)
 
 
+# Define a route with the option strict_slashes=False
 @app.route('/', strict_slashes=False)
-def hbnb_route():
-    """prints Hello HBNB"""
+def hello_hbnb():
     return "Hello HBNB!"
 
 
 @app.route('/hbnb', strict_slashes=False)
-def hbnb():
-    """prints HBNB"""
+def display_hbnb():
     return "HBNB"
 
 
-if __name__ == "__main__":
-    app.run(host="0.0.0.0")
+if __name__ == '__main__':
+    app.run(host='0.0.0.0', port=5000)
